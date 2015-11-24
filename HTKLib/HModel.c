@@ -2297,7 +2297,7 @@ static ReturnStatus GetHMMDef(HMMSet *hset, Source *src, Token *tok,
       HMError(src,"NumStates not set");
       return(FAIL);
    }
-   hmm->numStates = N = nState;
+   hmm->numStates = N = nState; hmm->hIdx = 0;
    se = (StateElem *)New(hset->hmem,(N-2)*sizeof(StateElem));
    hmm->svec = se - 2;
    while (tok->sym == STATE) {
@@ -4098,7 +4098,7 @@ static ReturnStatus LoadAllMacros(HMMSet *hset, char *fname, short fidx)
                dset=*hset;
                dset.hmem=&gstack;
                dhmm = (HLink) New(&gstack,sizeof(HMMDef));
-               dhmm->owner=NULL; dhmm->numStates=0; dhmm->nUse=0; dhmm->hook=NULL;
+               dhmm->owner=NULL; dhmm->numStates=0; dhmm->nUse=0; dhmm->hook=NULL; dhmm->hIdx=0;
                if (trace&T_MAC)
                   printf("HModel: skipping HMM Def from macro %s\n",id->name);
                if(GetToken(&src,&tok)<SUCCESS){
@@ -4250,11 +4250,11 @@ void SetIndexes(HMMSet *hset)
    StreamInfo *sti;
    MixPDF *mp;
    MLink m;
-   int h,nm,nsm,ns,nss,nsp,np,nt;
+   int h,nm,nsm,ns,nss,nsp,np,nh,nt;
    
    /* Reset indexes */
    hset->indexSet = TRUE;
-   nt=0;
+   nh=nt=0;
    NewHMMScan(hset,&hss);
    while(GoNextState(&hss,FALSE))
       hss.si->sIdx=-1;
@@ -4281,6 +4281,7 @@ void SetIndexes(HMMSet *hset)
          TouchV(hss.hmm->transP);
       }
       hss.hmm->tIdx=(int)((long)GetHook(hss.hmm->transP));
+      hss.hmm->hIdx=nh++;
    } while (GoNextHMM(&hss));
    EndHMMScan(&hss);
    NewHMMScan(hset,&hss);

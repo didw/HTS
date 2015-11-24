@@ -690,13 +690,13 @@ void SetSet(IntSet s)
 }
 
 /* DupSet: duplicate given set to newset*/
-void DupSet(IntSet oldSet, IntSet newSet)
+void DupSet(IntSet oldSet, IntSet *newSet)
 {
    int i;
 
-   newSet = CreateSet(oldSet.nMembers);   
+   *newSet = CreateSet(oldSet.nMembers);   
    for (i=1;i<=oldSet.nMembers;i++) 
-      newSet.set[i] = oldSet.set[i];
+      newSet->set[i] = oldSet.set[i];
 }
 
 /* CopySet: copy given set to newset*/
@@ -1003,10 +1003,25 @@ static void PStatecomp(ILink models, ILink *ilist, char *type,
       if (hset->hsKind==TIEDHS || hset->hsKind==DISCRETEHS)
          HError(7231,"PStatecomp: Cannot specify streams or mixes unless continuous");
       str = CreateSet(SMAX);
-      AddMember(str,1);
+      SetSet(str);
       SkipSpaces();
       if (ch == '[')
          PMix(models,ilist,type,states,str,hset);
+      else {
+         ChkType('p', type);
+         for (h=models; h!= NULL; h=h->next) {
+            hmm = h->owner;
+            for (j=2; j<hmm->numStates; j++)
+               if (lsMember(states, j))
+                  for (s=1; s<=hset->swidth[0]; s++)
+                     if (lsMember(str,s)) { /* tie -> spdf */
+                        if (trace & T_ITM)
+                           printf(" %12s.state[%d].stream[%d]\n",
+                                 HMMPhysName(hset,hmm),j,s);
+                        AddItem(hmm,hmm->svec[j].info->pdf+s,ilist);
+                     }
+         }
+      }
       FreeSet(str);
       break;
    case STREAM_KEY:

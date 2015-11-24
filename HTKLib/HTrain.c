@@ -1059,6 +1059,7 @@ void AttachAccsParallel(HMMSet *hset, MemHeap *x, UPDSet uFlags, int nPara)
                         SetHook(hss.mp->mean,CreateMuAcc(x,size,nPara));
                      else 
                         SetHook(hss.mp->mean,NULL);
+                     TouchV(hss.mp->mean);
                   }
 		  if (!IsSeenV(hss.mp->cov.var)) {
                      if (uFlags&UPSEMIT)

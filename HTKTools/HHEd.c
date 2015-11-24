@@ -191,7 +191,7 @@ static Boolean applyMDL = FALSE;              /* apply MDL principle for cluster
 static float MDLfactor = 1.0;                 /* MDL control factor */
 static Boolean ignoreStrW = FALSE;            /* ignore stream weight */
 static float minVar = 1.0E-6;                 /* minimum variance for clusterd item */
-static Boolean reduceMem = FALSE;             /* reduce memory requirement for decision-tree clustering */
+static int reduceMem = 0.0;                   /* reduce memory requirement for decision-tree clustering (0: no reduction, 1: mid reduction but fast, 2: large reduction but slow) */
 static float minLeafOcc = 0.0;                /* minimum occ for each leaf node */
 static float minMixOcc = 0.0;                 /* minimum occ for each mix */
 static Vector shrinkOccThresh=NULL;           /* occupancy threshold for shrinking decision trees */
@@ -216,7 +216,7 @@ void SetConfParms(void)
       if (GetConfBool(cParm,nParm,"SINGLETREE",&b)) singleTree = b;
       if (GetConfBool(cParm,nParm,"APPLYMDL",&b)) applyMDL = b;
       if (GetConfBool(cParm,nParm,"IGNORESTRW",&b)) ignoreStrW = b;
-      if (GetConfBool(cParm,nParm,"REDUCEMEM",&b)) reduceMem = b;
+      if (GetConfInt(cParm,nParm,"REDUCEMEM",&i)) reduceMem = i;
       if (GetConfFlt(cParm,nParm,"MINVAR",&f)) minVar = f;
       if (GetConfFlt(cParm,nParm,"MDLFACTOR",&f)) MDLfactor = f;
       if (GetConfFlt(cParm,nParm,"MINLEAFOCC",&f)) minLeafOcc = f;
@@ -306,7 +306,10 @@ void ReportUsage(void)
    printf(" -m      apply MDL principle for clustering                off\n");
    printf(" -o s    extension for new hmm files          as source\n");
    printf(" -p      use pattern instead of base phone                 off\n");
-   printf(" -r      reduce memory usage on clustering                 off\n");
+   printf(" -r n    reduce memory usage on clustering                   0\n");
+   printf("         0: no memory reduction                               \n");
+   printf("         1: no memory reduction                               \n");
+   printf("         2: no memory reduction                               \n");
    printf(" -s      construct single tree                             off\n");
    printf(" -v f    Set minimum variance to f                         1.0E-6\n");
    printf(" -w mmf  Save all HMMs to macro file mmf s    as source\n");
@@ -363,7 +366,7 @@ int main(int argc, char *argv[])
       case 'p':
          usePattern = TRUE; break;
       case 'r':
-         reduceMem = TRUE; break;
+         reduceMem = GetChkedInt(0,2,s); break;
       case 's':
          singleTree = TRUE; break;
       case 'v':
@@ -475,6 +478,10 @@ char *ChkedAlpha(char *what,char *buf)
 
 /* ------------- Question Handling for Tree Building ----------- */
 
+static int nQuestions=0;
+static char **QMTable=NULL;
+static Boolean setQMTable=FALSE;
+
 typedef struct _IPat{
    char *pat;
    struct _IPat *next;
@@ -485,6 +492,7 @@ typedef struct _Question{      /* each question stored as both pattern and  */
    IPat *patList;               
    ILink ilist;
    char pattern[PAT_LEN];
+   int index;
    Boolean used;
 } Question;
 
@@ -599,7 +607,7 @@ void LoadQuestion(char *qName, ILink ilist, char *pattern)
    }
    
    q=(Question *) New(&questHeap,sizeof(Question));
-   q->used=FALSE; q->qName=labid; q->patList = NULL;
+   q->used=FALSE; q->qName=labid; q->patList=NULL; q->index=nQuestions++;
    q->ilist = ilist;
    labid->aux=q; 
    strcpy(q->pattern, pattern);
@@ -3198,25 +3206,79 @@ double ClusterLogL(CLink clist, AccSum *no, AccSum *yes, double *occs)
    return(prob);
 }
 
+/* SetQMTable: Set Question x Model bit table */
+void SetQMTable (void)
+{
+   char *name;
+   int h,i,j;
+   ILink p;
+   MLink m;
+   Boolean answer;
+   Question *q;
+
+   const int size=(hset->numPhyHMM>>3)+1;
+
+   QMTable = (char**) New(&questHeap, nQuestions*sizeof(char *));
+
+   for (i=0; i<nQuestions; i++) {
+      QMTable[i] = (char *) New(&questHeap, size*sizeof(char));
+      memset(QMTable[i], 0, size);
+   }
+
+#pragma omp parallel for private(name,h,i,j,p,m,answer,q)
+   for (h=0; h<MACHASHSIZE; h++) {
+      for (m=hset->mtab[h]; m!=NULL; m=m->next) {
+         if (m->type == 'h') {
+            /* index and name of current hmm */
+            i = ((HLink)(m->structure))->hIdx >> 3; /* division by 8 */
+            j = ((HLink)(m->structure))->hIdx & 7;  /* residue by 8 */
+            name = m->id->name;
+
+            /* check answers */
+            for (p=qList; p!=NULL; p=p->next) {
+               q = (Question *)p->item;
+               answer = QMatch(name, q);
+               if (answer)
+                  QMTable[q->index][i] |= (1<<j); /* set j-th bit */
+            }
+         }
+      }
+   }
+
+   setQMTable = TRUE;
+
+   return;
+}
+
 /* AnswerQuestion: set ans field in each cluster item in preparation for
    a possible split */
 Boolean AnswerQuestion(Node *node, Question *q)
 {
    CLink p;
    ILink i;
-   int yes=0, no=0;
-  
-   if (reduceMem) {
-      MLink m;
-      
-      for (p=node->clist;p!=NULL;p=p->next) {
+   MLink m;
+   int yes=0, no=0, index, j;
+   switch(reduceMem) {
+   case 2:
+      for (p=node->clist; p!=NULL; p=p->next) {
          m = (MLink)p->item->owner->hook;
          p->ans = QMatch(m->id->name, q);
          if (p->ans) yes++;
          else        no++;
       }
-   }
-   else {
+      break;
+   case 1:
+      index = q->index;
+      if (!setQMTable) SetQMTable();
+      for (p=node->clist; p!=NULL; p=p->next) {
+         j = p->item->owner->hIdx & 7; /* residue by 8 */
+         p->ans = (QMTable[index][p->item->owner->hIdx>>3] & (1<<j)) ? TRUE : FALSE;
+         if (p->ans) yes++;
+         else        no++;
+      }
+      break;
+   case 0:
+   default:
       /* set ans=FALSE for items in this cluster */
       for (p=node->clist;p!=NULL;p=p->next) {
       p->ans = FALSE;
@@ -3341,25 +3403,20 @@ void AddLeafList(Node *node, Tree *tree, double threshold)
    /* delete node->parent from leaves */
    p = node->parent;
    if (p!=NULL) {
-      if (p==tree->leaf) {
+      if (p==tree->leaf)
          tree->leaf = p->next;
-      }
-      if (p->prev!=NULL) {
+      if (p->prev!=NULL)
          p->prev->next = p->next;
-         p->prev = NULL;
-      }
-      if (p->next!=NULL) {
+      if (p->next!=NULL)
          p->next->prev = p->prev;
-         p->next = NULL;
    }
-}
 
    /* search insert location of given node */
    p=NULL; n=tree->leaf;
    while (n != NULL && imp < n->sProb-n->tProb) {
       if (n->sProb-n->tProb < threshold) break;
       p=n; n=n->next;
-}
+   }
 
    if (p==NULL) tree->leaf = node;
    if (p!=NULL) p->next = node;
@@ -6244,7 +6301,7 @@ void QuestionCommand(void)
    ChkedAlpha("QS question name",qName);
    
    /* get copy of original item list whilst parsing it */
-   if (reduceMem) {
+   if (reduceMem!=0) {
       char pattern[PAT_LEN]; 
       ReadLine(&source, pattern);
       if (trace & T_QST) {
@@ -6252,6 +6309,7 @@ void QuestionCommand(void)
          fflush(stdout);
       }
       LoadQuestion(qName,NULL,pattern);
+      setQMTable=FALSE;
    }
    else {
       ILink ilist=NULL;

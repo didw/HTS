@@ -140,8 +140,8 @@ typedef struct {
    double  occ;
    DVector spSum;
    DVector spSumSq;
-   TriMat *bTriMat;
-   TriMat *bDiagMat;
+   DTriMat *bTriMat;
+   DTriMat *bDiagMat;
    DVector bVector;
 } RegAcc;
 
@@ -1394,45 +1394,45 @@ static void SetAInfo(HMMSet *hset, AdaptXForm *xform, Boolean parent)
 
 static TriMat *CreateBlockTriMat(MemHeap *x, IntVec blockSize)
 {
-  TriMat *tm;
+  DTriMat *tm;
   int nblock, bsize, b, *i;
   
   nblock = IntVecSize(blockSize);
-  tm = (TriMat *)New(x,sizeof(TriMat)*(nblock+1));  
+  tm = (DTriMat *)New(x,sizeof(DTriMat)*(nblock+1));
   i = (int *)tm; *i = nblock;
   for (b=1;b<=nblock;b++) {
     bsize = blockSize[b];
-    tm[b] = CreateTriMat(x, bsize); 
-    ZeroTriMat(tm[b]);
+    tm[b] = CreateDTriMat(x, bsize); 
+    ZeroDTriMat(tm[b]);
   }
   return(tm);
 }
 
-static void ZeroBlockTriMat(TriMat *bTriMat)
+static void ZeroBlockTriMat(DTriMat *bTriMat)
 {
   int *nblock,b;
 
   nblock = (int *)bTriMat;
   for (b=1; b<=*nblock; b++)
-      ZeroTriMat(bTriMat[b]);  
+      ZeroDTriMat(bTriMat[b]);  
 }
 
-static void ZeroBaseTriMat(TriMat *bTriMat)
+static void ZeroBaseTriMat(DTriMat *bTriMat)
 {
   int i;
   int *vsize;
-  TriMat tm;
+  DTriMat tm;
  
   vsize = (int *)bTriMat;
   for (i=1;i<=*vsize;i++) {
     tm = bTriMat[i];
-    ZeroTriMat(tm);
+    ZeroDTriMat(tm);
   }  
 }
 
 static void CreateBaseTriMat(XFInfo *xfinfo, MemHeap *x, MixPDF *mp, int class)
 {
-  TriMat *tm;
+  DTriMat *tm;
   int vsize = VectorSize(mp->mean);
    IntVec blockSize = GetBlockSize(xfinfo,class);
   RegAcc *regAcc, *ra;
@@ -1449,13 +1449,13 @@ static void CreateBaseTriMat(XFInfo *xfinfo, MemHeap *x, MixPDF *mp, int class)
     ZeroDVector(regAcc->bVector);
     regAcc->bDiagMat = CreateBlockTriMat(x,blockSize); 
     ZeroBlockTriMat(regAcc->bDiagMat);
-    tm = (TriMat *)New(x,sizeof(TriMat)*(vsize+1));
+    tm = (DTriMat *)New(x,sizeof(DTriMat)*(vsize+1));
     vsp = (int *)tm; *vsp = vsize;
     for (b=1,cntj=1;b<=IntVecSize(blockSize);b++) {
       bsize = blockSize[b];
       for (j=1;j<=bsize;j++,cntj++) {
-	tm[cntj] =  CreateTriMat(x, bsize);  
-	ZeroTriMat(tm[cntj]);
+        tm[cntj] =  CreateDTriMat(x, bsize);
+        ZeroDTriMat(tm[cntj]);
       }
     }
     regAcc->bTriMat = tm;    

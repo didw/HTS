@@ -200,6 +200,7 @@ typedef struct {
    SVector dur;            /* vector of model duration params, if any */   
    SMatrix transP;         /* transition matrix (logs) */
    int tIdx;               /* Transition matrix index */
+   int hIdx;               /* hmm index */
    int nUse;               /* num logical hmm's sharing this def */
    Ptr hook;               /* general hook */
 } HMMDef;

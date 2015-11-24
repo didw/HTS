@@ -254,7 +254,7 @@ Boolean IsMember(IntSet s, int x);
 Boolean IsFullSet(IntSet s);
 void ClearSet(IntSet s);
 void SetSet(IntSet s);
-void DupSet(IntSet oldSet, IntSet newSet);
+void DupSet(IntSet oldSet, IntSet *newSet);
 void CopySet(IntSet oldSet, IntSet newSet);
 
 /*

@@ -676,7 +676,7 @@ static void SetStateSequence (GenInfo *genInfo)
 }
 
 /* CountDurStat: count duration statistics */
-static void CountDurStat (Vector mean, Vector ivar, float *sum, float *sqr, IntVec sindex)
+static void CountDurStat (DVector mean, DVector ivar, double *sum, double *sqr, IntVec sindex)
 {
    int i,j;
    
@@ -693,8 +693,8 @@ static void CountDurStat (Vector mean, Vector ivar, float *sum, float *sqr, IntV
 static void SetStateDurations (GenInfo *genInfo)
 {
    int i,j,k,s,cnt,nStates,modeldur,start=0,tframe=0;
-   float sum,sqr,dur,rho=0.0,diff=0.0;
-   Vector *mean, *ivar;
+   double sum,sqr,dur,rho=0.0,diff=0.0;
+   DVector *mean, *ivar;
    Label *label;
    HLink dm;
    
@@ -704,9 +704,9 @@ static void SetStateDurations (GenInfo *genInfo)
       HError(9999,"SetStateDurations: Cannot use model-level alignments in random duration generation");
    
    /* state duration statistics storage */
-   if ((mean = (Vector *) New(genInfo->genMem, genInfo->labseqlen*sizeof(Vector)))== NULL)
+   if ((mean = (DVector *) New(genInfo->genMem, genInfo->labseqlen*sizeof(DVector)))== NULL)
       HError(9905,"SetStateDurations: Cannot allocate memory for mean");
-   if ((ivar = (Vector *) New(genInfo->genMem, genInfo->labseqlen*sizeof(Vector)))== NULL)
+   if ((ivar = (DVector *) New(genInfo->genMem, genInfo->labseqlen*sizeof(DVector)))== NULL)
       HError(9905,"SetStateDurations: Cannot allocate memory for inverse variance");
    mean--; ivar--;
    
@@ -718,17 +718,17 @@ static void SetStateDurations (GenInfo *genInfo)
       
       /* # of states in the i-th model */
       nStates = genInfo->hmm[i]->numStates-2;
-      mean[i] = CreateVector(genInfo->genMem, nStates);
-      ivar[i] = CreateVector(genInfo->genMem, nStates);
+      mean[i] = CreateDVector(genInfo->genMem, nStates);
+      ivar[i] = CreateDVector(genInfo->genMem, nStates);
       
       /* set statistics of the i-th state */
       for (s=cnt=1; s<=genInfo->dset->swidth[0]; s++) {
          for (k=1; k<=genInfo->dset->swidth[s]; k++,cnt++) {
             mean[i][cnt] = dm->svec[2].info->pdf[s].info->spdf.cpdf[1].mpdf->mean[k];
             switch(dm->svec[2].info->pdf[s].info->spdf.cpdf[1].mpdf->ckind) {
-            case DIAGC:    ivar[i][cnt] = 1.0 / dm->svec[2].info->pdf[s].info->spdf.cpdf[1].mpdf->cov.var[k]; break;
-            case INVDIAGC: ivar[i][cnt] = dm->svec[2].info->pdf[s].info->spdf.cpdf[1].mpdf->cov.var[k]; break;
-            case FULLC:    ivar[i][cnt] = dm->svec[2].info->pdf[s].info->spdf.cpdf[1].mpdf->cov.inv[k][k]; break;
+            case DIAGC:    ivar[i][cnt] = 1.0 / (double)dm->svec[2].info->pdf[s].info->spdf.cpdf[1].mpdf->cov.var[k]; break;
+            case INVDIAGC: ivar[i][cnt] = (double)dm->svec[2].info->pdf[s].info->spdf.cpdf[1].mpdf->cov.var[k]; break;
+            case FULLC:    ivar[i][cnt] = (double)dm->svec[2].info->pdf[s].info->spdf.cpdf[1].mpdf->cov.inv[k][k]; break;
             }
          }
       }
@@ -760,10 +760,9 @@ static void SetStateDurations (GenInfo *genInfo)
             rho = 0.0;
          }
          else {  /* model-level alignment of the i-th label is specified */
-            modeldur = (int) (label->end - label->start)/genInfo->frameRate;
             sum = sqr = 0.0;
             CountDurStat(mean[i], ivar[i], &sum, &sqr, genInfo->sindex[i]);
-            rho = (modeldur-sum)/sqr;
+            rho = (((label->end-label->start)/genInfo->frameRate)-sum)/sqr;
          }
       }
       
@@ -779,7 +778,7 @@ static void SetStateDurations (GenInfo *genInfo)
          if (genInfo->durations[i][j]<1)
             genInfo->durations[i][j] = 1;
 
-         diff += dur-(float)genInfo->durations[i][j];
+         diff += dur-(double)genInfo->durations[i][j];
          tframe += genInfo->durations[i][j];
          modeldur += genInfo->durations[i][j];
       }
@@ -801,7 +800,7 @@ static void SetStateDurations (GenInfo *genInfo)
 static void GetLabStateDurations (GenInfo *genInfo)
 {
    int i,j,k,tframe=0;
-   float diff=0.0;
+   double diff=0.0;
    Label *label;
    
    /* get state durations from given label sequence */ 
@@ -813,7 +812,7 @@ static void GetLabStateDurations (GenInfo *genInfo)
       
       /* get state duration from label */
       genInfo->durations[j][k] = (int)((label->end - label->start)/genInfo->frameRate+diff+0.5);
-      diff += (label->end - label->start)/genInfo->frameRate - (float)genInfo->durations[j][k];
+      diff += (label->end - label->start)/genInfo->frameRate - (double)genInfo->durations[j][k];
       
       /* count total frame */
       tframe += genInfo->durations[j][k++];
@@ -1184,11 +1183,14 @@ static void Forward_Substitution (PdfStream *pst)
       g[t] = r[t];
       for (i=1; (i<width) && (t-i>0); i++)
          g[t] -= U[t-i][i+1] * g[t-i];
-      g[t] /= U[t][1];
-      
+      g[t] /= U[t][1];      
+   }
+
+   if (rFlags&RNDPAR) {
       /* random generation */
-      if (rFlags&RNDPAR)
+      for (t=1; t<=T; t++) {
          g[t] += GaussDeviate(rndParMean, rndParVar);
+      }
    }
    
    if (trace & T_MAT) {

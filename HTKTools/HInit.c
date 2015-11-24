@@ -639,6 +639,9 @@ void UniformSegment(void)
    Vector floor;
    SpaceInfo *si;
 
+   void FloorMixes  (MixtureElem *mixes, const int M, const float floor);
+   void FloorTMMixes(Vector mixes,       const int M, const float floor);
+
    if (trace & T_UNI)
       printf(" Uniform Segmentation\n");
    seqMat = CreateSeqMat();
@@ -675,41 +678,42 @@ void UniformSegment(void)
                         sti->spdf.cpdf[si->sindex[m]].weight = 0;
                } else {
                   cset = FlatCluster(&clustSetStack,seq,si->count,NULLC,ck,cov);
-            if (trace&T_UNI) ShowClusterSet(cset);
+                  if (trace&T_UNI) ShowClusterSet(cset);
                   for (m=1; m<=si->count; m++){
                      mp = sti->spdf.cpdf[si->sindex[m]].mpdf;
                      size = VectorSize(mp->mean);
-               if (mp->ckind != ck)
-                  HError(2123,"UniformSegment: different covkind within a mix\n");
-               c = cset->cl+m;
-               if (uFlags&UPMIXES)
-                        sti->spdf.cpdf[si->sindex[m]].weight = (float)c->csize/(float)sumItems;
-               if (uFlags&UPMEANS)
+                     if (mp->ckind != ck)
+                        HError(2123,"UniformSegment: different covkind within a mix\n");
+                     c = cset->cl+m;
+                     if (uFlags&UPMIXES)
+                        sti->spdf.cpdf[si->sindex[m]].weight = (float)((double)c->csize/(double)sumItems);
+                     if (uFlags&UPMEANS)
                         CopyRVector(c->vCtr,mp->mean,si->order);
                      if (uFlags&UPVARS){
-                  switch(ck){
-                  case DIAGC:
-                     for (j=1; j<=size; j++){
-                        z= c->cov.var[j];
-                        mp->cov.var[j] = (z<floor[j])?floor[j]:z;
-                     }
-                     break;
-                  case FULLC:
-                     for (j=1; j<=size; j++){
-                        for (k=1; k<j; k++) {
-                           mp->cov.inv[j][k] = c->cov.inv[j][k];
+                        switch(ck){
+                        case DIAGC:
+                           for (j=1; j<=size; j++){
+                              z= c->cov.var[j];
+                              mp->cov.var[j] = (z<floor[j])?floor[j]:z;
+                           }
+                           break;
+                        case FULLC:
+                           for (j=1; j<=size; j++){
+                              for (k=1; k<j; k++) {
+                                 mp->cov.inv[j][k] = c->cov.inv[j][k];
+                              }
+                              z = c->cov.inv[j][j];
+                              mp->cov.inv[j][j] = (z<floor[j])?floor[j]:z;
+                           }
+                           break;
+                        default:
+                           HError(2124,"UniformSegment: bad cov kind %d\n",ck);
                         }
-                        z = c->cov.inv[j][j];
-                        mp->cov.inv[j][j] = (z<floor[j])?floor[j]:z;
                      }
-                     break;
-                  default:
-                     HError(2124,"UniformSegment: bad cov kind %d\n",ck);
-                  }
-            }
                   }
                }
             }
+            FloorMixes(sti->spdf.cpdf+1,M,mixWeightFloor);
             break;
          case DISCRETEHS:
             size = hset.swidth[s];
@@ -759,11 +763,12 @@ void UniformSegment(void)
                         z = c->cov.inv[j][j];
                         mp->cov.inv[j][j] = (z<floor[j])?floor[j]:z;
                      }
-                     break;                     
+                     break;
                   default:
                      HError(2124,"UniformSegment: bad cov kind %d\n",ck);
-                  }                 
+                  }
             }
+            FloorTMMixes(sti->spdf.tpdf,M,mixWeightFloor);
             break;       
          }
          ResetHeap(&clustSetStack);

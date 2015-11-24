@@ -92,7 +92,7 @@ typedef struct _ObsCache{
 typedef struct _AccCache{
    int     baseclass;
    DVector bVector;
-   TriMat *bTriMat;
+   DTriMat *bTriMat;
    struct _AccCache *next;
 } AccCache;  
 
