@@ -6626,15 +6626,16 @@ void UseCommand(void)
 void FloorAverageCommand(void)
 {
    HMMScanState hss;
-   StateInfo *si   ;
+   StateInfo *si;
    StreamInfo *sti;
-   SVector var , mean;
+   SVector var, mean;
    DVector *varAcc;
-   double occAcc;
+   double occAcc[SMAX];
    float weight;
-   float occ; 
+   float occ, occs;
    int l=0,k,i,s,S;
    float varScale;
+   Boolean singleMix;
 
    /*  need stats for operation */
    if (!occStatsLoaded)
@@ -6653,36 +6654,55 @@ void FloorAverageCommand(void)
       ZeroDVector(varAcc[s]);
    }
    NewHMMScan(hset,&hss);
-   occAcc = 0.0;
+   for (s=0; s<=hset->swidth[0]; s++) occAcc[s] = 0.0;
    while(GoNextState(&hss,FALSE)) {
       si = hss.si;
-      memcpy(&occ,&(si->hook),sizeof(float));
-      occAcc += occ;
-      s=0;
       while (GoNextStream(&hss,TRUE)) {
-         l=hset->swidth[hss.s];
+         s = hss.s;
+         l = hset->swidth[s];
          sti = hss.sti;
-         s++;
-         if ( hss.M > 1 ) { 
+         memcpy(&occ, &(sti->hook), sizeof(float));
+
+         /* single/multiple mix check */
+         for (i=1,k=0; i<=hss.M; i++) {
+            if (hset->swidth[s] == VectorSize(sti->spdf.cpdf[i].mpdf->mean)) /* MSD check */
+               k++;
+         }
+         singleMix = (k==1) ? TRUE : FALSE;
+
+         /* accumulate statistics */
+         if (!singleMix) {
+            occs = 0.0;
+
             for (k=1;k<=l;k++) { /* loop over k-th dimension */
                double    rvar  = 0.0;
                double    rmean = 0.0;
                for (i=1; i<=hss.M; i++) {
-                  weight = sti->spdf.cpdf[i].weight;
-                  var  = sti->spdf.cpdf[i].mpdf->cov.var;
-                  mean = sti->spdf.cpdf[i].mpdf->mean;
-                  
-                  rvar  += weight * ( var[k] + mean[k] * mean[k] );
-                  rmean += weight * mean[k];
+                  if (VectorSize(sti->spdf.cpdf[i].mpdf->mean) == l) { /* MSD check */
+                     weight = sti->spdf.cpdf[i].weight;
+                     var  = sti->spdf.cpdf[i].mpdf->cov.var;
+                     mean = sti->spdf.cpdf[i].mpdf->mean;
+                     
+                     rvar  += weight * ( var[k] + mean[k] * mean[k] );
+                     rmean += weight * mean[k];
+                     if (k == 1) occs += weight * occ;
+                  }
                }
                rvar -= rmean * rmean;
-               varAcc[s][k] += rvar * occ ;
+               varAcc[s][k] += rvar * occs;
             }
+            occAcc[s] += occs;
          }
-         else { /* single mix */
-            var  = sti->spdf.cpdf[1].mpdf->cov.var;
-            for (k=1;k<=l;k++) 
-               varAcc[s][k] += var[k]*occ;
+         else { /* single mix (single space matches the stream weight) */
+            for (i=1; i<=hss.M; i++) {
+               if (VectorSize(sti->spdf.cpdf[i].mpdf->mean) == l) {
+                  weight = sti->spdf.cpdf[i].weight;
+                  var = sti->spdf.cpdf[i].mpdf->cov.var;
+                  for (k=1;k<=l;k++)
+                     varAcc[s][k] += occ * weight * var[k];
+                  occAcc[s] += occ * weight;
+               }
+            }
          }
       }
    }
@@ -6690,7 +6710,7 @@ void FloorAverageCommand(void)
    /* normalisation */
    for (s=1;s<=S;s++)
       for (k=1;k<=hset->swidth[s];k++)
-         varAcc[s][k] /= occAcc;
+         varAcc[s][k] /= occAcc[s];
    /* set the varFloorN macros */
    for (s=1; s<=S; s++){
       int size;
@@ -6715,7 +6735,7 @@ void FloorAverageCommand(void)
          NewMacro(hset,hset->numFiles,'v',id,v);
       }
       /* scale and store */
-      for (k=1;k<=l;k++)
+      for (k=1;k<=hset->swidth[s];k++)
          v[k] = varAcc[s][k]*varScale;
    }
    /* and apply floors */

@@ -1012,9 +1012,9 @@ static void PStatecomp(ILink models, ILink *ilist, char *type,
          for (h=models; h!= NULL; h=h->next) {
             hmm = h->owner;
             for (j=2; j<hmm->numStates; j++)
-               if (lsMember(states, j))
+               if (IsMember(states, j))
                   for (s=1; s<=hset->swidth[0]; s++)
-                     if (lsMember(str,s)) { /* tie -> spdf */
+                     if (IsMember(str,s)) { /* tie -> spdf */
                         if (trace & T_ITM)
                            printf(" %12s.state[%d].stream[%d]\n",
                                  HMMPhysName(hset,hmm),j,s);
