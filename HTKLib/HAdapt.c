@@ -1483,7 +1483,7 @@ void SetBaseAccsTime(XFInfo *xfinfo, const int t)
 void UpdateAccCache(double Lr, Vector svec, MixPDF *mp)
 {
    AccCache *paac;
-   TriMat m;
+   DTriMat m;
    int vsize = VectorSize(mp->mean);
    Vector covar;
    int i, j, bstart, bsize;
@@ -1495,7 +1495,7 @@ void UpdateAccCache(double Lr, Vector svec, MixPDF *mp)
          nblock = (long)(paac->bTriMat[0]);
 	for (bl=1,bstart=0;bl<=nblock;bl++) {
 	  m = paac->bTriMat[bl];
-	  bsize = TriMatSize(m);
+	  bsize = DTriMatSize(m);
 	  for (i=1;i<=bsize;i++) { /* Fill the accumulate stores */
 	    for (j=1; j<=i; j++)
 		m[i][j] = svec[i+bstart] * svec[j+bstart];
@@ -1518,7 +1518,7 @@ void UpdateBaseAccs(XFInfo *xfinfo, Vector svec, const int t, RegAcc *regAcc)
    int i,j,k,b,bsize;
    long nblock, bl;
    int cnt, cnti, cntj;
-   TriMat tm, m;
+   DTriMat tm, m;
    RegAcc *ra;
    DVector acc;
    BaseClass *bclass;
@@ -1535,18 +1535,18 @@ void UpdateBaseAccs(XFInfo *xfinfo, Vector svec, const int t, RegAcc *regAcc)
          if ((ra->bTriMat!=NULL) && (ra->bVector[1]>0.0)) {    
          acc = ra->bVector;
             nblock = (long)(ra->bDiagMat[0]);
-	 for (bl=1,cnti=1;bl<=nblock;bl++) {
-	   m = ra->bDiagMat[bl];
-	   bsize = TriMatSize(m);
-	   for (i=1;i<=bsize;i++,cnti++) { /* Fill the accumulate stores */
-	     tm = ra->bTriMat[cnti];
-	     for (j=1; j<=bsize; j++)
-	       for (k=1; k<=j; k++)
-		 tm[j][k] += m[j][k] * acc[cnti];
-	   }
+            for (bl=1,cnti=1;bl<=nblock;bl++) {
+               m = ra->bDiagMat[bl];
+               bsize = DTriMatSize(m);
+               for (i=1;i<=bsize;i++,cnti++) { /* Fill the accumulate stores */
+                  tm = ra->bTriMat[cnti];
+                  for (j=1; j<=bsize; j++)
+                      for (k=1; k<=j; k++)
+                         tm[j][k] += m[j][k] * acc[cnti];
+               }
+            }
+            ZeroDVector(ra->bVector);
          }
-         ZeroDVector(ra->bVector);
-      }
       }
    }
 
@@ -1554,23 +1554,23 @@ void UpdateBaseAccs(XFInfo *xfinfo, Vector svec, const int t, RegAcc *regAcc)
    if ((regAcc->bTriMat!=NULL) && (regAcc->bVector[1]==0.0) && (svec!=NULL)) {
       nblock = (long)(regAcc->bDiagMat[0]);
       for (bl=1,cnt=1; bl<=nblock; bl++) {
-         bsize = TriMatSize(regAcc->bDiagMat[bl]);
+         bsize = DTriMatSize(regAcc->bDiagMat[bl]);
          m = regAcc->bDiagMat[bl];
          for (i=1,cnti=cnt; i<=bsize; i++,cnti++) {
             for (j=1,cntj=cnt; j<=i; j++,cntj++)
-	      m[i][j] = svec[cnti]*svec[cntj];
-	  }
-	  cnt +=bsize;
-	}
+               m[i][j] = svec[cnti]*svec[cntj];
+         }
+         cnt +=bsize;
       }
    }
+}
 
 void UpdateBaseAccsWithPaac(XFInfo *xfinfo)
 {
    int i,j,k,b,bsize;
    long nblock, bl;
    int cnti;
-   TriMat tm, m;
+   DTriMat tm, m;
    RegAcc *ra;
    DVector acc;
    BaseClass *bclass;
@@ -1587,22 +1587,22 @@ void UpdateBaseAccsWithPaac(XFInfo *xfinfo)
       if ( ra->bTriMat != NULL) {
          for (paac=xfinfo->headac; paac!=NULL; paac=paac->next) { 
             if ((paac->baseclass==b) && (paac->bVector[1]>0.0)) {
-            acc = paac->bVector;
+               acc = paac->bVector;
                nblock = (long)(ra->bDiagMat[0]);
-            for (bl=1,cnti=1;bl<=nblock;bl++) {
-              m = paac->bTriMat[bl];
-              bsize = TriMatSize(m);
-              for (i=1;i<=bsize;i++,cnti++) { /* Fill the accumulate stores */
-                tm = ra->bTriMat[cnti];
-                for (j=1; j<=bsize; j++)
-                  for (k=1; k<=j; k++)
-                    tm[j][k] += m[j][k] * acc[cnti];
-              }
+               for (bl=1,cnti=1;bl<=nblock;bl++) {
+                  m = paac->bTriMat[bl];
+                  bsize = DTriMatSize(m);
+                     for (i=1;i<=bsize;i++,cnti++) { /* Fill the accumulate stores */
+                        tm = ra->bTriMat[cnti];
+                        for (j=1; j<=bsize; j++)
+                           for (k=1; k<=j; k++)
+                              tm[j][k] += m[j][k] * acc[cnti];
+                     }
+               }
             }
-          }
-        }
+         }
       }
-   }  
+   }
 }
 
 void ResetAccCache(XFInfo *xfinfo)
@@ -2223,7 +2223,7 @@ static void AccCMLLRBaseStats(MixPDF *mp, AccStruct *accs)
   RegAcc *ra;
   int i,j,k;
   int cnti,b,bsize;
-  TriMat tm;
+  DTriMat tm;
  
   ra = GetRegAcc(mp);
 
@@ -3344,43 +3344,43 @@ static double GetAlphaLike(double a, double b, double c, double alpha)
 
 static double GetAlpha(DMatrix invgmat,DVector kmat,double occ, DVector cofact)
 {
-  int bsize, dim, i ,j;
-  DVector tvec;
-  double a, b, c, tmp;
-  double alpha1, alpha2, like1, like2;
- 
-  bsize= DVectorSize(cofact); 
-  dim = DVectorSize(kmat);
-  tvec = CreateDVector(&gstack,dim);
-  ZeroDVector(tvec);
-  for (i=1;i<=dim;i++)
-    for (j=1;j<=bsize;j++)
-      tvec[i] += cofact[j]*invgmat[i][j];
-  /* Now set up the quadratic equation */
-  a=0;b=0;c=-occ;
-  for (i=1;i<=bsize;i++) {
-    a += tvec[i]*cofact[i];
-    b += tvec[i] * kmat[i];
-  }
-  if(bsize != dim)  b += tvec[dim] * kmat[dim];
-  /* Must by definition be real */
-  tmp = (b*b-4*a*c);
-  if (tmp<0) {
-    HError(-1,"WARNING: accumulates incorrect (%f < 0) - resetting",tmp);
-    tmp=0;
-  }
-  
-  tmp = sqrt(tmp);
-  /* Now get the possible values of alpha */
-  alpha1 = (-b+tmp)/(2*a);
-  alpha2 = (-b-tmp)/(2*a);
-  like1 = GetAlphaLike(a,b,c,alpha1);
-  like2 = GetAlphaLike(a,b,c,alpha2);
- 
-  if (like2>like1)
-    return alpha2;
-  else
-    return alpha1;
+   int bsize, dim, i ,j;
+   DVector tvec;
+   double a, b, c, tmp;
+   double alpha1, alpha2, like1, like2;
+
+   bsize= DVectorSize(cofact); 
+   dim = DVectorSize(kmat);
+   tvec = CreateDVector(&gstack,dim);
+   ZeroDVector(tvec);
+   for (i=1;i<=dim;i++)
+      for (j=1;j<=bsize;j++)
+         tvec[i] += cofact[j]*invgmat[i][j];
+   /* Now set up the quadratic equation */
+   a=0.0;b=0.0;c=-occ;
+   for (i=1;i<=bsize;i++) {
+      a += tvec[i]*cofact[i];
+      b += tvec[i] * kmat[i];
+   }
+   if(bsize != dim)  b += tvec[dim] * kmat[dim];
+   /* Must by definition be real */
+   tmp = (b*b-4.0*a*c);
+   if (tmp<0.0) {
+      HError(-1,"WARNING: accumulates incorrect (%f < 0) - resetting",tmp);
+      tmp=0.0;
+   }
+
+   tmp = sqrt(tmp);
+   /* Now get the possible values of alpha */
+   alpha1 = (-b+tmp)/(2.0*a);
+   alpha2 = (-b-tmp)/(2.0*a);
+   like1 = GetAlphaLike(a,b,c,alpha1);
+   like2 = GetAlphaLike(a,b,c,alpha2);
+
+   if (like2>like1)
+      return alpha2;
+   else
+      return alpha1;
 }
 
 static double GetRowLike(DMatrix gmat,DVector kmat, DVector cofact, double occ, DVector w)
