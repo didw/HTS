@@ -3230,7 +3230,7 @@ static void InvertG (DMatrix G, DMatrix invG, const int c, const int bsize, cons
    DVector w;
    int i,j,cnti,cntj,st,en,dim,size;
 
-   if (bandw<bsize) {
+   if (bandw+1<bsize) {
       /* matrix size */
       for (st=c-bandw; st<1; st++);
       for (en=c+bandw; en>bsize; en--);
@@ -5272,7 +5272,7 @@ Boolean GenAdaptXForm(HMMSet *hset, XFInfo *xfinfo)
 
 void TidyBaseAccs(XFInfo *xfinfo)
 {
-   SetBaseAccsTime(xfinfo,-1);
+   SetBaseAccsTime(xfinfo,-2);
    if (xfinfo->headac==NULL)
       UpdateBaseAccs(xfinfo,NULL,-1,NULL);
    else { 
@@ -5320,7 +5320,7 @@ Boolean UpdateSpkrStats(HMMSet *hset, XFInfo *xfinfo, char *datafn)
             if (trace&T_SXF)
                printf("Generating transform %s (%i)\n",xfinfo->coutspkr,xfinfo->nspkr);
             /* Tidy the statistics of the last frame */
-            SetBaseAccsTime(xfinfo,-1);
+            SetBaseAccsTime(xfinfo,-2);
             if (xfinfo->headac==NULL)
                UpdateBaseAccs(xfinfo,NULL,-1,NULL);
             else { 
