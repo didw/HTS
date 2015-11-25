@@ -1588,11 +1588,13 @@ FILE * DumpAccsParallel(HMMSet *hset, char *fname, int n, UPDSet uFlags, int ind
 /* LoadStateOcc: new state occ from file f */
 static void LoadStateOcc(Source *src, HMMSet *hset, StateInfo *si)
 {
-   float occ;
+   float tocc,socc;
 
    if (hset->numSharedStreams>0) {
-      ReadFloat(src,&occ,1,ldBinary);
-      memcpy(&(si->hook),&occ,sizeof(float));
+      memcpy(&tocc,&(si->hook),sizeof(float));
+      ReadFloat(src,&socc,1,ldBinary);
+      tocc += socc;
+      memcpy(&(si->hook),&tocc,sizeof(float));
    }
 }
 
