@@ -409,7 +409,7 @@ void InitialiseForBack(FBInfo *fbInfo, MemHeap *x, HMMSet *hset, UPDSet uFlags_h
    }
    if (pde) {
       if (sharedMix)
-	 HError(7399,"PDE is not compatible with shared mixtures");
+       HError(7399,"PDE is not compatible with shared mixtures");
       printf("Partial Distance Elimination on\n");
    }
    
@@ -1103,12 +1103,12 @@ static float *** CreateOjsprob(MemHeap *x, int N, int S)
    for (j=2;j<N;j++) {
       v[j]=(float **)New(x, SS*sizeof(float *));
       if (S==1)
-	 v[j][0] = NULL;
+         v[j][0] = NULL;
       else {
-	 v[j][0] = (float *)New(x, sizeof(float));
-	 v[j][0][0] = LZERO;
-	 for (s=1;s<SS;s++)
-	    v[j][s] = NULL;
+         v[j][0] = (float *)New(x, sizeof(float));
+         v[j][0][0] = LZERO;
+         for (s=1;s<SS;s++)
+            v[j][s] = NULL;
       }
    }
    return v;
@@ -1125,13 +1125,13 @@ static float * NewOtprobVec(MemHeap *x, int M)
    v[0]=LZERO;
    if (M>1)
       for (m=1;m<=M;m++)
-	 v[m] = LZERO;
+         v[m] = LZERO;
    return v;
 }
 
 /* ShStrP: Stream Outp calculation exploiting sharing */
 static float *ShStrP(HMMSet *hset, StreamInfo *sti, Vector v, const int t, 
-		       AdaptXForm *xform, MemHeap *abmem)
+                   AdaptXForm *xform, MemHeap *abmem)
 {
    WtAcc *wa;
    MixtureElem *me;
@@ -1155,7 +1155,7 @@ static float *ShStrP(HMMSet *hset, StreamInfo *sti, Vector v, const int t,
          if ((pMix != NULL) && (pMix->time == t))
             x = pMix->prob;
          else {
-            x = MOutP(ApplyCompFXForm(mp,v,xform,&det,t),mp);	 
+            x = MOutP(ApplyCompFXForm(mp,v,xform,&det,t),mp);       
             x += det;
             if (pMix != NULL) {
                pMix->prob = x; pMix->time = t;
@@ -1173,14 +1173,14 @@ static float *ShStrP(HMMSet *hset, StreamInfo *sti, Vector v, const int t,
                   mixp = pMix->prob;
                else {
                   mixp = MOutP(ApplyCompFXForm(mp,v,xform,&det,t),mp);
-		  mixp += det;
+                  mixp += det;
                   if (pMix != NULL) {
                      pMix->prob = mixp; pMix->time = t;
                   }
                }
                if (mixp>LSMALL && wt>LSMALL)
                x = LAdd(x,wt+mixp);
-	       outprobjs[m] = mixp;
+               outprobjs[m] = mixp;
             }
          }
       }
@@ -1190,36 +1190,36 @@ static float *ShStrP(HMMSet *hset, StreamInfo *sti, Vector v, const int t,
             wt = MixLogWeight(hset,me->weight);
             if (wt>LMINMIX){
                mp = me->mpdf;
-	       mixp = MOutP(ApplyCompFXForm(mp,v,xform,&det,t),mp);
-	       mixp += det;
+               mixp = MOutP(ApplyCompFXForm(mp,v,xform,&det,t),mp);
+               mixp += det;
                if (mixp>LSMALL && wt>LSMALL)
                x = LAdd(x,wt+mixp);
-	       outprobjs[m] = mixp;
+             outprobjs[m] = mixp;
             }
          }
       }
       else { /* Partial distance elimination */
-	 /* first Gaussian computed exactly in PDE */
-	 wt = MixLogWeight(hset,me->weight);
-	 mp = me->mpdf;
-	 otvs = ApplyCompFXForm(mp,v,xform,&det,t);
-	 mixp = IDOutP(otvs,VectorSize(otvs),mp); /* INVDIAGC assumed */
-	 mixp += det;
-	 x = wt+mixp;
-	 outprobjs[1] = mixp;
+         /* first Gaussian computed exactly in PDE */
+         wt = MixLogWeight(hset,me->weight);
+         mp = me->mpdf;
+         otvs = ApplyCompFXForm(mp,v,xform,&det,t);
+         mixp = IDOutP(otvs,VectorSize(otvs),mp); /* INVDIAGC assumed */
+         mixp += det;
+         x = wt+mixp;
+         outprobjs[1] = mixp;
          for (m=2,me=sti->spdf.cpdf+2; m<=M; m++,me++) {
             wt = MixLogWeight(hset,me->weight);
-	    if (wt>LMINMIX){
-	       mp = me->mpdf;
-	       otvs = ApplyCompFXForm(mp,v,xform,&det,t);
-	       if (PDEMOutP(otvs,mp,&mixp,x-wt-det) == TRUE) {
-		  mixp += det;
-                  if (mixp>LSMALL && wt>LSMALL)
-		  x = LAdd(x,wt+mixp);
-	       }
-	       outprobjs[m] = mixp; /* LZERO if PDEMOutP returns FALSE */
-	    }
-	 }
+            if (wt>LMINMIX){
+               mp = me->mpdf;
+               otvs = ApplyCompFXForm(mp,v,xform,&det,t);
+               if (PDEMOutP(otvs,mp,&mixp,x-wt-det) == TRUE) {
+                  mixp += det;
+                     if (mixp>LSMALL && wt>LSMALL)
+                  x = LAdd(x,wt+mixp);
+               }
+               outprobjs[m] = mixp; /* LZERO if PDEMOutP returns FALSE */
+            }
+         }
       }
       outprobjs[0] = x;
       wa->prob = outprobjs;
@@ -1262,68 +1262,57 @@ static void Setotprob(AlphaBeta *ab, FBInfo *fbInfo, UttInfo *utt, int t, int S,
          printf(" Q%2d: ",q);
       hmm = ab->al_qList[q]; Nq = hmm->numStates;
       if (otprob[t][q] == NULL) {
-            outprob = otprob[t][q] = CreateOjsprob(&ab->abMem,Nq,S);
-            for (j=2;j<Nq;j++){
+         outprob = otprob[t][q] = CreateOjsprob(&ab->abMem,Nq,S);
+         for (j=2;j<Nq;j++){
             si=hmm->svec[j].info;
             ste=si->pdf+1; sum = 0.0;
-               outprobj = outprob[j];
-               for (s=1;s<=S;s++,ste++){
+            outprobj = outprob[j];
+            for (s=1;s<=S;s++,ste++){
                sti = ste->info;
-                  switch (hset->hsKind){
-                  case TIEDHS:  /* SOutP deals with tied mix calculation */
-                  case DISCRETEHS:
-                     if (S==1) {
-                        outprobj[0] = NewOtprobVec(&ab->abMem,1);
-                     outprobj[0][0] = SOutP(hset,s,&utt->o[t],sti);
+               switch (hset->hsKind){
+               case TIEDHS:  /* SOutP deals with tied mix calculation */
+               case DISCRETEHS:
+                  if (S==1) {
+                     outprobj[0] = NewOtprobVec(&ab->abMem,1);
+                  outprobj[0][0] = SOutP(hset,s,&utt->o[t],sti);
                   }
                   else {
                         outprobj[s] = NewOtprobVec(&ab->abMem,1);
                      outprobj[s][0] = SOutP(hset,s,&utt->o[t],sti);
                      }
-		     break;
-                  case PLAINHS:  
-                  case SHAREDHS: 
-		     if (S==1)
+                  break;
+               case PLAINHS:  
+               case SHAREDHS: 
+                  if (S==1)
                      outprobj[0] = ShStrP(hset,sti,utt->o[t].fv[s],t,fbInfo->al_inXForm_hmm,&ab->abMem);
-		     else {
+                  else {
                      if (((WtAcc *)sti->hook)->time==t) seenStr=TRUE;
                      else seenStr=FALSE;
                      outprobj[s] = ShStrP(hset,sti,utt->o[t].fv[s],t,fbInfo->al_inXForm_hmm,&ab->abMem);
-                     }
-		    break;
-                  default:
-                     if (S==1)
-		        outprobj[0] = NULL; 
-		     else
-		        outprobj[s] = NULL; 
                   }
-               if (S>1) {
-                  if (!seenStr)
-                     outprobj[s][0] *= si->weights[s];
-		     sum += outprobj[s][0];
+                  break;
+               default:
+                  if (S==1)
+                     outprobj[0] = NULL; 
+                  else
+                     outprobj[s] = NULL; 
                }
+               if (S>1)
+                  sum += si->weights[s] * outprobj[s][0];
             }
-               if (S>1){
+            if (S>1) {
                outprobj[0][0] = sum;
-               /*if (seenStr) {
-                     outprobj[0][0] = sum/2;
-               } 
-               else { 
-                     outprobj[0][0] = sum;
-                     for (s=1;s<=S;s++)
-                        outprobj[s][0] = sum - outprobj[s][0];
-               }*/
-               }
-               if (trace&T_OUT && NonSkipRegion(skipstart,skipend,t)) {
-                  printf(" %d. ",j); PrLog(outprobj[0][0]);
-                  if (S>1){
-                     printf("[ ");
-                  for (s=1; s<=S; s++) PrLog(outprobj[0][0] - outprobj[s][0]);
-                     printf("]");
-                  }
+            }
+            if (trace&T_OUT && NonSkipRegion(skipstart,skipend,t)) {
+               printf(" %d. ",j); PrLog(outprobj[0][0]);
+               if (S>1){
+                  printf("[ ");
+               for (s=1; s<=S; s++) PrLog(outprobj[0][0] - si->weights[s] * outprobj[s][0]);
+                  printf("]");
                }
             }
          }
+      }
       if (trace&T_OUT && NonSkipRegion(skipstart,skipend,t)) 
          printf("\n");
    }
@@ -1903,7 +1892,7 @@ static void UpTranParms(FBInfo *fbInfo, HLink hmm, int t, int q,
          }
          if (x>MINEARG) {
             ti[j] += exp(x); ta->occ[i] += exp(x);
-               }
+         }
          if (i==1 && j==N && ai[N]>LSMALL && bq1t != NULL){ /* tee transition */
             x = aqt[1][1]+ai[N]+bq1t[1][1]-pr;
             if (x>MINEARG) {
@@ -1932,7 +1921,7 @@ static void UpMixParms(FBInfo *fbInfo, int q, HLink hmm, HLink al_hmm,
                        int t, DVector *aqt, DVector *aqt1, DVector *bqt, int S,
                        Boolean twoDataFiles, LogDouble pr)
 {
-   int i,s,j,k,kk,m=0,mx,M=0,N,vSize,d,*maxDur;
+   int i,s,j,k,kk,m=0,mx,M=0,N,vSize,order,d,*maxDur;
    Vector mu_jm,var,mean=NULL,invk,otvs;
    TMixRec *tmRec = NULL;
    float **outprob;
@@ -1945,6 +1934,7 @@ static void UpMixParms(FBInfo *fbInfo, int q, HLink hmm, HLink al_hmm,
    HMMSet *hset;
    HSetKind hsKind;
    AlphaBeta *ab;
+   StateInfo *si;
    StreamElem *ste, *al_ste=NULL;
    StreamInfo *sti, *al_sti=NULL;
    MixtureElem *me;
@@ -1991,6 +1981,7 @@ static void UpMixParms(FBInfo *fbInfo, int q, HLink hmm, HLink al_hmm,
    }
          
    for (j=2;j<N;j++) {
+      si = hmm->svec[j].info;
       if (fbInfo->maxM>1){
          initx = hmm->transP[1][j] + aqt[1][1];
          if (t>1) {
@@ -2047,7 +2038,7 @@ static void UpMixParms(FBInfo *fbInfo, int q, HLink hmm, HLink al_hmm,
             ab->occm[t][q][j][s] = CreateVector(&ab->abMem, M);
             ZeroVector(ab->occm[t][q][j][s]);
          }
-         if (fbInfo->twoModels) { /* component probs of update hmm */
+         if (fbInfo->twoModels || si->weights[s]!=1.0) { /* component probs of update hmm */
             norm = LZERO;
             for (mx=1; mx<=M; mx++) {
                if (alCompLevel) {
@@ -2071,14 +2062,18 @@ static void UpMixParms(FBInfo *fbInfo, int q, HLink hmm, HLink al_hmm,
                   else {
                      otvs = ApplyCompFXForm(mp,o2[t].fv[s],inxform,&det,t);
                   }
-                  }
-               else {
+               }
+               else if (fbInfo->twoModels){
                   otvs = ApplyCompFXForm(mp,o[t].fv[s],inxform,&det,t);
                }
-               wght = MixLogWeight(hset,me->weight);
-               comp_prob[mx]=wght+MOutP(otvs,mp)+det;
-               if (comp_prob[mx]>LSMALL)
-               norm = LAdd(norm,comp_prob[mx]);
+               else
+                  otvs = o[t].fv[s];
+               order = SpaceOrder(otvs);
+               wght = si->weights[s] * MixLogWeight(hset,me->weight);
+               prob = (fbInfo->twoModels) ? MOutP(otvs,mp)+det : outprob[s][mx];
+               comp_prob[mx] = (!hset->msdflag[s] || (hset->msdflag[s] && order==VectorSize(mp->mean))) ? si->weights[s]*prob : LZERO; /* MSD check */
+               if (wght+comp_prob[mx]>LSMALL)
+                  norm = LAdd(norm,wght+comp_prob[mx]);
             }
          }
 
@@ -2109,7 +2104,7 @@ static void UpMixParms(FBInfo *fbInfo, int q, HLink hmm, HLink al_hmm,
                break;
             }
             if (wght>LMINMIX){
-              /* compute mixture likelihood  */
+               /* compute mixture likelihood  */
                if (!mmix || (hsKind==DISCRETEHS)) { /* For DISCRETEHS calcs are*/
                   x = LZERO;
                   for (d=1; d<=maxDur[j]; d++)
@@ -2117,48 +2112,48 @@ static void UpMixParms(FBInfo *fbInfo, int q, HLink hmm, HLink al_hmm,
                         x = LAdd(x,aqt[j][d]+bqt[j][d]);   /* same as single mix*/
                   x -= pr;
                }
-              else if (fbInfo->twoModels) {      /* note: only SHAREDHS or PLAINHS */
+               else if (fbInfo->twoModels) {      /* note: only SHAREDHS or PLAINHS */
+                  c_jm = si->weights[s] * wght;
                   x = LZERO;
                   for (d=1; d<=maxDur[j]; d++)
                      if (aqt[j][d]>LSMALL && bqt[j][d]>LSMALL)
                         x = LAdd(x,aqt[j][d]+bqt[j][d]);
-                  x += comp_prob[m]-pr-norm;
-              }
-              else {
-                 c_jm=wght;
-                 x = initx+c_jm;
-                 switch(hsKind) {
-                 case TIEDHS :
-                    tmp = tmRec->probs[mx].prob;
-                    prob = (tmp>=MINLARG)?log(tmp)+tmRec->maxP:LZERO;
-                    break;
-                 case SHAREDHS:
+                  x += c_jm+comp_prob[m]-pr-norm;
+               }
+               else {
+                  c_jm = si->weights[s] * wght;
+                  x = initx+c_jm;
+                  switch(hsKind) {
+                  case TIEDHS :
+                     tmp = tmRec->probs[mx].prob;
+                     prob = (tmp>=MINLARG)?log(tmp)+tmRec->maxP:LZERO;
+                     break;
+                  case SHAREDHS:
                   case PLAINHS : 
-		    if (S==1)
-		       prob = outprob[0][mx];
-		    else
-		       prob = outprob[s][mx];
-                    break;
-                 default:
-                    x=LZERO;
-                    break;
-                 }
-                 x += prob;
-                 if (S>1)      /* adjust for parallel streams */
-                     x += outprob[0][0] - outprob[s][0];
-                     /* x += outprob[s][0] */
-              }
-              if (twoDataFiles){  /* switch to new data for mu & var est */
+                     if (S==1)
+                        prob = outprob[0][mx];
+                     else
+                        prob = outprob[s][mx];
+                     break;
+                  default:
+                     x=LZERO;
+                     break;
+                  }
+                  x += prob;
+                  if (S>1)      /* adjust for parallel streams */
+                     x += outprob[0][0] - si->weights[s] * outprob[s][0];
+               }
+               if (twoDataFiles) {  /* switch to new data for mu & var est */
                   otvs = o2[t].fv[s];
-              }
-              if (-x<pruneSetting.minFrwdP) {
-		 if (twoDataFiles){  /* switch to new data for mu & var est */
+               }
+               if (-x<pruneSetting.minFrwdP) {
+                  if (twoDataFiles) {  /* switch to new data for mu & var est */
                      otvs = ApplyCompFXForm(mp,o2[t].fv[s],fbInfo->paXForm_hmm,&det,t);
                   }
                   else {
                      otvs = ApplyCompFXForm(mp,o[t].fv[s],fbInfo->paXForm_hmm,&det,t);
-		 }
-                 Lr = exp(x);
+                  }
+                  Lr = exp(x);
                   /* More diagnostics */
                   /* if (Lr>0.000001 && ab->occt[j]>0.000001 &&
                      (Lr/ab->occt[j])>1.00001)
