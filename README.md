@@ -1,2 +1,3 @@
 # HTS-2.1
-## patched bugs issued in 2008~2009
+## http://hts.sp.nitech.ac.jp/
+## bugs patched issued in 2008~2010
